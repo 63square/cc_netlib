@@ -148,6 +148,18 @@ local function parse_frame(frame)
   end
 end
 
+local function address_from_id(prefix, id)
+  if id == nil then
+    id = os.computerID()
+  end
+
+  if prefix == nil then
+    return {0x13, 0x37, 0x00, bit32.band(bit32.rshift(id, 16), 0xFF), bit32.band(bit32.rshift(id, 8), 0xFF), bit32.band(id, 0xFF)}
+  else
+    return {prefix[1], prefix[2], prefix[3], bit32.band(bit32.rshift(id, 16), 0xFF), bit32.band(bit32.rshift(id, 8), 0xFF), bit32.band(id, 0xFF)}
+  end
+end
+
 local function format_address(addr)
   return string.format("%02X:%02X:%02X:%02X:%02X:%02X", table.unpack(addr))
 end
@@ -164,5 +176,6 @@ return {
   new_frame = new_frame,
   parse_frame = parse_frame,
   format_address = format_address,
-  parse_address = parse_address
+  parse_address = parse_address,
+  address_from_id = address_from_id
 }

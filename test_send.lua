@@ -1,9 +1,10 @@
 local PORT_NAME = "left"
-local DST_ADDR = "FF:FF:FF:FF:FF:FF"
-local SRC_ADDR = "AA:BB:CC:DD:EE:FF"
 
 local physical = require("physical")
 local ethernet = require("ethernet")
+
+local MAC_ADDRESS = ethernet.address_from_id()
+print("Address: "..ethernet.format_address(MAC_ADDRESS))
 
 local ok, port = physical.open(PORT_NAME)
 assert(ok, "port is not a modem")
@@ -16,6 +17,12 @@ local function string_to_byte(str)
   return data
 end
 
-local frame = ethernet.new_frame(ethernet.parse_address(DST_ADDR), ethernet.parse_address(SRC_ADDR), {6,3}, string_to_byte("Hello, World!"))
+write("Destination Address: ")
+local destination = read()
+
+write("Message: ")
+local message = read()
+
+local frame = ethernet.new_frame(ethernet.parse_address(destination), MAC_ADDRESS, {6,3}, string_to_byte(message))
 
 physical.write(port, frame)
