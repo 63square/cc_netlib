@@ -2,8 +2,12 @@ local CHANNEL = 65535
 
 local port_table = {}
 
-local function open_port(name)
-  local modem = peripheral.wrap(name)
+local function open_port(port)
+  if port_table[port] then
+    return port_table[port]
+  end
+
+  local modem = peripheral.wrap(port)
   if modem == nil then
     return false, nil
   end
@@ -16,13 +20,13 @@ local function open_port(name)
     modem.open(CHANNEL)
   end
 
-  port_table[name] = modem
+  port_table[port] = modem
 
-  return true, modem
+  return true, port
 end
 
-local function close_port(name)
-  local modem = peripheral.wrap(name)
+local function close_port(port)
+  local modem = peripheral.wrap(port)
   if modem == nil then
     return false
   end
@@ -35,20 +39,20 @@ local function close_port(name)
     modem.close(CHANNEL)
   end
 
-  port_table[name] = nil
+  port_table[port] = nil
 
   return true
 end
 
 local function write_data(port, data)
-  port.transmit(CHANNEL, CHANNEL, string.char(table.unpack(data)))
+  port_table[port].transmit(CHANNEL, CHANNEL, data)
 end
 
 local function read_data()
   while true do
     local _, side, channel, replyChannel, data, _ = os.pullEvent("modem_message")
     if channel == CHANNEL and replyChannel == CHANNEL then
-      return port_table[side], data
+      return side, data
     end
   end
 end

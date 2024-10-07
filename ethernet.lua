@@ -108,53 +108,43 @@ local function new_frame(destination, source, type, data)
   return frame
 end
 
-local function send_frame(port, destination_mac, source_mac, type, data)
-  local frame = new_frame(destination_mac, source_mac, type, data)
 
-  physical.write(port, frame)
-end
+local function parse_frame(frame)
+  if #frame < 72 or #frame > 1526 then
+    return false, "invalid frame length"
+  end
 
-
-local function recv_frame()
-  while true do
-    local port, data = physical.read()
-    local frame = {}
-
-    if #data >= 72 and #data <= 1526 then
-      for i=1, #data do
-        frame[i] = string.byte(string.sub(data, i, i+1))
-      end
-
-      local preamble = true
-      for i=1,7 do
-        if frame[i] ~= 0xaa then
-          preamble = false
-        end
-      end
-
-      if preamble and frame[8] == 0xab then
-        local c1, c2, c3, c4 = table.unpack(frame, #frame - 3, #frame)
-        local provided_crc = bit32.bor(bit32.bor(bit32.bor(bit32.lshift(c1, 24), bit32.lshift(c2, 16)), bit32.lshift(c3, 8)), c4)
-
-        local count = #frame - 4
-        local crc = 2 ^ 32 - 1
-        local j = 1
-
-        while count > 0 do
-          local byte = frame[j]
-          crc = bit32.bxor(bit32.rshift(crc, 8), CRC32_tbl[bit32.bxor(bit32.band(crc, 0xFF), byte) + 1])
-          j = j + 1
-          count = count - 1
-        end
-
-        crc = bit32.bxor(crc, 0xFFFFFFFF)
-        if crc < 0 then crc = crc + 2 ^ 32 end
-
-        if provided_crc == crc then
-          return port, { table.unpack(frame, 9, 14) }, { table.unpack(frame, 15, 20) }, { table.unpack(frame, 21, 22) }, { table.unpack(frame, 23, #frame - 4) }
-        end
-      end
+  for i=1,7 do
+    if frame[i] ~= 0xaa then
+      return false, "preamble not found"
     end
+  end
+
+  if frame[8] ~= 0xab then
+    return false, "sfd not found"
+  end
+
+  local c1, c2, c3, c4 = table.unpack(frame, #frame - 3, #frame)
+  local provided_crc = bit32.bor(bit32.bor(bit32.bor(bit32.lshift(c1, 24), bit32.lshift(c2, 16)), bit32.lshift(c3, 8)), c4)
+
+  local count = #frame - 4
+  local crc = 2 ^ 32 - 1
+  local j = 1
+
+  while count > 0 do
+    local byte = frame[j]
+    crc = bit32.bxor(bit32.rshift(crc, 8), CRC32_tbl[bit32.bxor(bit32.band(crc, 0xFF), byte) + 1])
+    j = j + 1
+    count = count - 1
+  end
+
+  crc = bit32.bxor(crc, 0xFFFFFFFF)
+  if crc < 0 then crc = crc + 2 ^ 32 end
+
+  if provided_crc == crc then
+    return true, { table.unpack(frame, 9, 14) }, { table.unpack(frame, 15, 20) }, { table.unpack(frame, 21, 22) }, { table.unpack(frame, 23, #frame - 4) }
+  else
+    return false, "invalid checksum"
   end
 end
 
@@ -172,8 +162,7 @@ end
 
 return {
   new_frame = new_frame,
-  send_frame = send_frame,
-  recv_frame = recv_frame,
+  parse_frame = parse_frame,
   format_address = format_address,
   parse_address = parse_address
 }
