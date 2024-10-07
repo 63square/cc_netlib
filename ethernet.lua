@@ -164,6 +164,10 @@ local function format_address(addr)
   return string.format("%02X:%02X:%02X:%02X:%02X:%02X", table.unpack(addr))
 end
 
+local function address_to_int(addr)
+  return ((addr[1] * 2^40) + (addr[2] * 2^32)) + ((addr[4] * 2^16) + (addr[3] * 2^24)) + ((addr[5] * 2^8) + addr[6])
+end
+
 local function parse_address(addr)
   local bytes = {}
   for hextet in string.gmatch(addr, "(%x%x)") do
@@ -177,5 +181,6 @@ return {
   parse_frame = parse_frame,
   format_address = format_address,
   parse_address = parse_address,
-  address_from_id = address_from_id
+  address_from_id = address_from_id,
+  address_to_int = address_to_int
 }
